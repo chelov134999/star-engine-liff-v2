@@ -1,0 +1,53 @@
+name: Build and Deploy V2 Apps
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - name: Install shared deps
+        run: pnpm install --recursive
+
+      - name: Build Admin
+        working-directory: apps/v2-admin
+        run: pnpm install && pnpm build
+
+      - name: Build Competitors
+        working-directory: apps/v2-competitors
+        run: pnpm install && pnpm build
+
+      - name: Build Reports
+        working-directory: apps/v2-reports
+        run: pnpm install && pnpm build
+
+      - name: Prepare deploy bundle
+        run: |
+          rm -rf deploy
+          mkdir -p deploy/apps/v2-admin deploy/apps/v2-competitors deploy/apps/v2-reports
+          cp -R apps/v2-admin/dist/* deploy/apps/v2-admin/
+          cp -R apps/v2-competitors/dist/* deploy/apps/v2-competitors/
+          cp -R apps/v2-reports/dist/* deploy/apps/v2-reports/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy

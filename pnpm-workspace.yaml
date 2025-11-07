@@ -1,0 +1,6 @@
+packages:
+  - apps
+  - apps/shared
+  - apps/v2-admin
+  - apps/v2-competitors
+  - apps/v2-reports

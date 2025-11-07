@@ -1,0 +1,9 @@
+{
+  "name": "star-engine-liff-v2",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter guardian-v2-admin... build && pnpm --filter guardian-v2-competitors... build && pnpm --filter guardian-v2-reports... build"
+  }
+}
