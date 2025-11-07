@@ -32,6 +32,13 @@ body,
   background: var(--guardian-color-canvas-gray);
   color: var(--guardian-color-primary-navy);
   margin: 0;
+  min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 .guardian-app {
@@ -189,6 +196,37 @@ body,
   display: flex;
   flex-wrap: wrap;
   gap: var(--guardian-spacing-md);
+}
+.guardian-metric {
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .guardian-header {
+    position: static;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 16px;
+  }
+  .guardian-main {
+    max-width: none;
+    padding: 24px 16px 80px;
+    gap: 24px;
+  }
+  .guardian-section,
+  .guardian-search {
+    padding: 18px;
+    border-radius: 14px;
+  }
+  .guardian-hero {
+    flex-direction: column;
+  }
+  .guardian-nav {
+    flex-wrap: wrap;
+  }
 }
 
 .guardian-metric {
