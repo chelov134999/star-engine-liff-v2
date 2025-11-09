@@ -14,22 +14,46 @@ const isBrowser = typeof window !== 'undefined';
 declare global {
   interface Window {
     __GUARDIAN_LIFF_ID__?: string;
+    __GUARDIAN_RUNTIME_CONFIG__?: GuardianRuntimeConfig;
   }
 }
+
+interface GuardianRuntimeConfig {
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  supabaseJwt?: string;
+  liffId?: string;
+  liffRedirectUrl?: string;
+  defaultLeadId?: string;
+  defaultAccountId?: string;
+  hasAdminRole?: boolean;
+}
+
+const getRuntimeConfig = (): GuardianRuntimeConfig => {
+  if (!isBrowser) return {};
+  return (
+    ((window as unknown as Window).__GUARDIAN_RUNTIME_CONFIG__ ?? {}) as GuardianRuntimeConfig
+  );
+};
 
 export interface GuardianSupabaseConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
 }
 
-export const getGuardianSupabaseConfig = (): GuardianSupabaseConfig => ({
-  supabaseUrl: readEnv('V2_SUPABASE_URL') ?? '',
-  supabaseAnonKey: readEnv('V2_SUPABASE_ANON_KEY') ?? '',
-});
+export const getGuardianSupabaseConfig = (): GuardianSupabaseConfig => {
+  const runtime = getRuntimeConfig();
+  return {
+    supabaseUrl: readEnv('V2_SUPABASE_URL') ?? runtime.supabaseUrl ?? '',
+    supabaseAnonKey: readEnv('V2_SUPABASE_ANON_KEY') ?? runtime.supabaseAnonKey ?? '',
+  };
+};
 
 const getServiceTokenFallback = (): string | null => {
   const explicitJwt = readEnv('V2_SUPABASE_JWT');
   if (explicitJwt) return explicitJwt;
+  const runtimeJwt = getRuntimeConfig().supabaseJwt;
+  if (runtimeJwt) return runtimeJwt;
   const serviceKey = readEnv('V2_SUPABASE_SERVICE_KEY');
   return serviceKey ?? null;
 };
@@ -64,6 +88,8 @@ const ensureSupabaseClient = (): SupabaseClient => {
 const resolveLiffId = (): string => {
   const envValue = (readEnv('V2_LIFF_ID') ?? '').trim();
   if (envValue) return envValue;
+  const runtimeValue = (getRuntimeConfig().liffId ?? '').trim();
+  if (runtimeValue) return runtimeValue;
   if (isBrowser) {
     const params = new URLSearchParams(window.location.search);
     const queryValue = params.get('liffId') ?? params.get('liff_id');
@@ -97,6 +123,7 @@ const ensureLiffLoggedIn = async (): Promise<boolean> => {
   if (!liff.isLoggedIn()) {
     const redirectUri =
       readEnv('V2_LIFF_REDIRECT_URL') ||
+      getRuntimeConfig().liffRedirectUrl ||
       (typeof window !== 'undefined' ? window.location.href : undefined);
     liff.login({ redirectUri });
     throw new GuardianLiffRedirectError();
@@ -141,13 +168,18 @@ export const getGuardianSessionToken = async (): Promise<string | null> => {
 };
 
 export const getGuardianAuthInfo = async (): Promise<GuardianAuthInfo> => {
+  const runtimeConfig = getRuntimeConfig();
   if (!isBrowser) {
     return {
       session: null,
       user: null,
-      roles: ['guardian.admin', 'guardian.ops'],
-      defaultLeadId: readEnv('V2_DEFAULT_LEAD_ID') ?? null,
-      defaultAccountId: readEnv('V2_DEFAULT_ACCOUNT_ID') ?? null,
+      roles:
+        runtimeConfig.hasAdminRole === false
+          ? []
+          : ['guardian.admin', 'guardian.ops'],
+      defaultLeadId: readEnv('V2_DEFAULT_LEAD_ID') ?? runtimeConfig.defaultLeadId ?? null,
+      defaultAccountId:
+        readEnv('V2_DEFAULT_ACCOUNT_ID') ?? runtimeConfig.defaultAccountId ?? null,
       profile: null,
     };
   }
@@ -162,14 +194,20 @@ export const getGuardianAuthInfo = async (): Promise<GuardianAuthInfo> => {
   if (userError) throw userError;
 
   const roles =
-    (userResult.user?.user_metadata?.guardianRoles as string[] | undefined) ?? [];
+    runtimeConfig.hasAdminRole === true
+      ? ['guardian.admin']
+      : runtimeConfig.hasAdminRole === false
+      ? []
+      : (userResult.user?.user_metadata?.guardianRoles as string[] | undefined) ?? [];
   const defaultLeadId =
     (userResult.user?.user_metadata?.guardianDefaultLeadId as string | undefined) ??
     readEnv('V2_DEFAULT_LEAD_ID') ??
+    runtimeConfig.defaultLeadId ??
     null;
   const defaultAccountId =
     (userResult.user?.user_metadata?.guardianDefaultAccountId as string | undefined) ??
     readEnv('V2_DEFAULT_ACCOUNT_ID') ??
+    runtimeConfig.defaultAccountId ??
     null;
 
   if (!cachedSession) {
@@ -197,8 +235,12 @@ export const buildSupabaseHeaders = async (): Promise<Record<string, string>> =>
   return headers;
 };
 
-export const hasGuardianAdminRole = (roles: string[]): boolean =>
-  roles.includes('guardian.admin') || roles.includes('guardian.ops');
+export const hasGuardianAdminRole = (roles: string[]): boolean => {
+  const runtime = getRuntimeConfig();
+  if (runtime.hasAdminRole === true) return true;
+  if (runtime.hasAdminRole === false) return false;
+  return roles.includes('guardian.admin') || roles.includes('guardian.ops');
+};
 
 export const guardianAuthDebugState = () => ({
   cachedSession,

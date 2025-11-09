@@ -15,7 +15,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: 'index.html',
-      external: [],
+      external: ['/star-engine-liff-v2/config.runtime.js'],
     },
   },
 });

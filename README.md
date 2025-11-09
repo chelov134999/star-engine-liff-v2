@@ -25,6 +25,26 @@ pnpm --filter guardian-v2-admin... dev   # 其餘 app 同理
 
 環境變數請複製 `.env.example_v2` 為 `.env.local`，填入正式的 LIFF ID、Supabase URL / Key、預設帳號/Lead UUID 等。
 
+### config.runtime.js（部署時必備）
+
+為了在 GitHub Pages 上避免「缺少 Supabase 設定」的錯誤，我們在 `public/config.runtime.js` 內提供一份可直接注入的設定：
+
+```js
+window.__GUARDIAN_RUNTIME_CONFIG__ = {
+  supabaseUrl: 'https://tepcdtqaqzvfeushfosi.supabase.co',
+  supabaseAnonKey: '...anon...',
+  liffId: '2008215846-5LwXlWVN',
+  liffRedirectUrl: 'https://chelov134999.github.io/star-engine-liff-v2/apps/v2-admin/',
+  defaultLeadId: 'e5c7c9ed-f23e-4aa8-9427-b941e3025103',
+  defaultAccountId: '5d71ea12-92bd-4c00-b21a-0e507ebe4a13',
+  hasAdminRole: true
+};
+```
+
+- Pages 會在每個 app 的 `<head>` 載入 `/star-engine-liff-v2/config.runtime.js`。
+- 若要更換環境，請直接編輯此檔（或另外產生 staging 版），無須重新 build。
+- 仍可保留 `.env.local` 以便本地開發；runtime config 只是多一層 fallback。
+
 ## 部署流程
 
 此 repo 內建 GitHub Actions（`deploy.yml`）：
